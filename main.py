@@ -40,7 +40,7 @@ def initDatabase(db: db.Database):
             location VARCHAR(255) NOT NULL,
             magnitude FLOAT NOT NULL,
             depth FLOAT NOT NULL,
-            timestamp VARCHAR(255) NOT NULL,
+            timestamp VARCHAR(255) NOT NULL
         );
         '''
     ]
