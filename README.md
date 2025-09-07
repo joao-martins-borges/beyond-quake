@@ -13,3 +13,6 @@ This repository concerns a real-time monitoring system for global natural disast
 - docker-compose up -d
 
 ## Booting Fast API server
+
+##Assumptions + design decisions
+- limit 10 on earthquakes endpoint to get latest earthquakes

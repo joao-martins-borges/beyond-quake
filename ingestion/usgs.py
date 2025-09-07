@@ -2,6 +2,7 @@ import requests
 import time
 from datetime import datetime, timezone
 import json
+import os
 
 from database import postgres as db
 
@@ -19,6 +20,7 @@ class USGS:
     def __init__(self, interval: int = 10, db: db.Database = None, frequency: str = "hourly"):
         self.interval = interval
         self.endpoint = self.endpoint_by_frequency[frequency]
+        self.db = db
     
     def fetch_data(self):
         response = requests.get(self.endpoint)
@@ -45,8 +47,7 @@ class USGS:
                 "time_utc": timestamp,
             })
         return earthquakes
-
-if __name__ == "__main__":
-    usgs = USGS()
-    data = usgs.fetch_data()
-    print(json.dumps(data, indent=2))
+    
+    def ingest_earthquakes(self, earthquakes):
+        for earthquake in earthquakes:
+            self.db.insert_earthquake(earthquake)

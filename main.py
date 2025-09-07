@@ -1,15 +1,16 @@
+from sys import monitoring
 from fastapi import FastAPI
 from dotenv import load_dotenv
 import os
-
+import asyncio
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
 from routers.earthquake import router as earthquake_router
 from database import postgres as db
+from ingestion.usgs import USGS
 
 load_dotenv()
-
-app = FastAPI()
 
 # DATABASE OBJECT DEFINITION
 monitoring_db = db.Database(
@@ -28,7 +29,29 @@ class Review(BaseModel):
     depth: float
     timestamp: str
 
-#INIT DATABASE
+async def fetch_and_ingest_loop():
+    usgs = USGS(db=monitoring_db)
+    while True:
+        try:
+            data = usgs.fetch_data()
+            earthquakes = usgs.parse_earthquakes(data)
+            usgs.ingest_earthquakes(earthquakes)
+        except Exception as e:
+            print(f"Error while fetching data from USGS API and ingesting: {e}")
+        await asyncio.sleep(10)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    
+    task = asyncio.create_task(fetch_and_ingest_loop())
+    yield
+    
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
 def initDatabase(db: db.Database): 
     queries = [
         '''
@@ -47,4 +70,12 @@ def initDatabase(db: db.Database):
     for query in queries:
         db.execute(query=query,params="")
 
+app = FastAPI(lifespan=lifespan)
+app.include_router(earthquake_router, prefix="/earthquakes")
+
 initDatabase(db=monitoring_db)
+
+usgs = USGS(db=monitoring_db)
+data = usgs.fetch_data()
+earthquakes = usgs.parse_earthquakes(data)
+usgs.ingest_earthquakes(earthquakes)

@@ -7,12 +7,26 @@ router = APIRouter(
 )
 
 @router.get("")
-async def get_latest_earthquakes(db: Database = Depends(get_db), limit: int = 10):
-    all_books_query = f"SELECT * FROM bronze.earthquakes limit {limit}"
-    results = db.fetch_all(all_books_query)
-    print(results)
+async def get_latest_earthquakes(schema: str = "bronze", db: Database = Depends(get_db), limit: int = 3):
+    latest_earthquakes_query = f"SELECT * FROM {schema}.earthquakes limit {limit} order by timestamp desc"
+    results = db.fetch_all(latest_earthquakes_query)
     books_list = [
-        {"id": row[0], "title": row[1], "author": row[2], "description": row[3]}
+        {"id": row[0], "location": row[1], "magnitude": row[2], "depth": row[3], "timestamp": row[4]}
         for row in results
     ]
     return books_list
+
+@router.get("/{earthquake_id}")
+async def get_earthquake_details(earthquake_id: int, schema: str = "bronze", db: Database = Depends(get_db)):
+    earthquake_query = f"SELECT * from {schema}.earthquake"
+    result = db.fetch_one(earthquake_query, (earthquake_id,))
+    if result:
+        earthquake = {
+            "id": result[0],
+            "location": result[1],
+            "magnitude": result[2],
+            "depth": result[3],
+            "timestamp": result[4]
+        }
+        return earthquake
+    return {"Error": f"Earthquake with id {earthquake_id} not found"}

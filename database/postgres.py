@@ -31,13 +31,13 @@ class Database:
             results = cur.fetchall()
         return results
 
-    def insert_book(self, book):
+    def insert_earthquake(self, earthquake):
         insert_query = '''
-        INSERT INTO lib.books (title, author, description)
-        VALUES (%s, %s, %s)
+        INSERT INTO bronze.earthquakes (location, magnitude, depth, timestamp)
+        VALUES (%s, %s, %s, %s)
         RETURNING id;
         '''
         with self.conn.cursor() as cur:
-            cur.execute(insert_query, (book.title, book.author, book.description))
+            cur.execute(insert_query, (earthquake["location"], earthquake["magnitude"], earthquake["depth_km"], earthquake["time_utc"]))
             self.conn.commit()
             return cur.fetchone()[0]
