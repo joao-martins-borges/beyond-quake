@@ -40,35 +40,13 @@ def init_database(db: db.Database):
             location VARCHAR(255) NOT NULL,
             magnitude FLOAT NOT NULL,
             depth FLOAT NOT NULL,
-            timestamp TIMESTAMPTZ NOT NULL
+            timestamp TIMESTAMPTZ NOT NULL,
+            updated_utc TIMESTAMPTZ NOT NULL
         );
         '''
     ]
     for query in queries:
-        db.execute(query=query,params="")
-
-async def fetch_and_ingest_loop():
-    usgs = USGS(db=monitoring_db)
-    while True:
-        try:
-            data = usgs.fetch_data()
-            earthquakes = usgs.parse_earthquakes(data)
-            usgs.ingest_earthquakes(earthquakes)
-        except Exception as e:
-            print(f"Error while fetching data from USGS API and ingesting: {e}")
-        await asyncio.sleep(10)
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    
-    task = asyncio.create_task(fetch_and_ingest_loop())
-    yield
-    
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+        db.execute(query=query,params=None)
 
 async def fetch_and_ingest_loop():
     usgs = USGS(db=monitoring_db, interval=120)
@@ -76,6 +54,7 @@ async def fetch_and_ingest_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_database(db=monitoring_db)
     task = asyncio.create_task(fetch_and_ingest_loop())
     yield
     task.cancel()

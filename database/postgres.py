@@ -33,17 +33,18 @@ class Database:
 
     def insert_earthquake(self, earthquake):
         insert_query = '''
-        INSERT INTO bronze.earthquakes (id, location, magnitude, depth, timestamp)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO bronze.earthquakes (id, location, magnitude, depth, timestamp, updated_utc)
+        VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET
             location = EXCLUDED.location,
             magnitude = EXCLUDED.magnitude,
             depth = EXCLUDED.depth,
-            timestamp = EXCLUDED.timestamp
+            timestamp = EXCLUDED.timestamp,
+            updated_utc = EXCLUDED.updated_utc
         RETURNING id;
 
         '''
         with self.conn.cursor() as cur:
-            cur.execute(insert_query, (earthquake["id"], earthquake["location"], earthquake["magnitude"], earthquake["depth_km"], earthquake["time_utc"]))
+            cur.execute(insert_query, (earthquake["id"], earthquake["location"], earthquake["magnitude"], earthquake["depth_km"], earthquake["time_utc"], earthquake["updated_utc"]))
             self.conn.commit()
             return cur.fetchone()[0]
