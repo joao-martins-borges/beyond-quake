@@ -1,24 +1,44 @@
 import requests
 from datetime import datetime, timezone, timedelta
 import asyncio
+import logging
 
 from database import postgres as db
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 class USGS:
     
     endpoint = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime={start}&endtime={end}"
 
-
     def __init__(self, interval: int = 120, db: db.Database = None):
         self.interval = interval
         self.db = db
         self.last_timestamp = None
+        logging.info("USGS poller initialized with interval=%s seconds", interval)
     
     def fetch_data(self, start_time: str, end_time: str):
         url = self.endpoint.format(start=start_time, end=end_time)
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
+        logging.info("Fetching data from %s to %s", start_time, end_time)
+
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            logging.error("HTTP error while fetching data: %s", e)
+        except requests.exceptions.ConnectionError as e:
+            logging.error("Connection error: %s", e)
+        except requests.exceptions.Timeout as e:
+            logging.error("Request timed out: %s", e)
+        except Exception as e:
+            logging.error("Unexpected error: %s", e)
+
+        return None
+
     
     def parse_earthquakes(self, data):
         earthquakes = []
@@ -47,17 +67,18 @@ class USGS:
                 "time_utc": event_time,
                 "updated_utc": updated_time
             })
+        logging.info("Parsed %s earthquakes", len(earthquakes))
         return earthquakes
     
     def ingest_earthquakes(self, earthquakes):
         for earthquake in earthquakes:
             if not self.last_timestamp or earthquake["updated_utc"] > self.last_timestamp:
                 self.db.insert_earthquake(earthquake)
-
+                logging.info("Inserted earthquake %s at %s", earthquake["id"], earthquake["time_utc"])
                 if not self.last_timestamp or earthquake["updated_utc"] > self.last_timestamp:
                     self.last_timestamp = earthquake["updated_utc"]
 
-    #For demonstration and testing purposes
+    # For demonstration and testing purposes
     def initial_load(self):
         start_time = datetime(2025, 9, 1, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
         end_time = datetime(2025, 9, 6, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
@@ -68,11 +89,11 @@ class USGS:
 
             if earthquakes:
                 self.ingest_earthquakes(earthquakes)
-                print(f"Initial load completed: {len(earthquakes)} earthquakes ingested for June 2025.")
+                logging.info("Initial load completed: %s earthquakes ingested for June 2025", len(earthquakes))
             else:
-                print("No earthquakes found for June 2025.")
+                logging.info("No earthquakes found for June 2025")
         except Exception as e:
-            print(f"Error during initial load: {e}")
+            logging.error("Error during initial load: %s", e)
 
     async def run_polling(self):
         self.initial_load()
@@ -90,10 +111,10 @@ class USGS:
 
                 if earthquakes:
                     self.ingest_earthquakes(earthquakes)
-                    print(f"Ingested {len(earthquakes)} earthquakes. Last timestamp: {self.last_timestamp}")
+                    logging.info("Ingested %s earthquakes. Last timestamp: %s", len(earthquakes), self.last_timestamp)
                 else:
-                    print("No new earthquakes.")
+                    logging.info("No new earthquakes")
             except Exception as e:
-                print(f"Error fetching earthquakes: {e}")
+                logging.error("Error fetching earthquakes: %s", e)
 
             await asyncio.sleep(self.interval)

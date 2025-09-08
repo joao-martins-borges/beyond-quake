@@ -1,4 +1,13 @@
 import psycopg2
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+
 class Database:
     def __init__(self, dbname, user, password, host, port):
         self.conn = psycopg2.connect(
@@ -20,16 +29,27 @@ class Database:
             self.conn.close()
     
     def fetch_one(self, query, params=None):
-        with self.conn.cursor() as cur:
-            cur.execute(query, params)
-            result = cur.fetchone()
-        return result
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(query, params)
+                result = cur.fetchone()
+                logging.info("fetch_one executed: %s", query)
+                return result
+        except Exception as e:
+            logging.error("Error in fetch_one with query %s and params %s: %s", query, params, e)
+            return None
 
     def fetch_all(self, query, params=None):
-        with self.conn.cursor() as cur:
-            cur.execute(query, params)
-            results = cur.fetchall()
-        return results
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(query, params)
+                results = cur.fetchall()
+                logging.info("fetch_all executed: %s", query)
+                return results
+        except Exception as e:
+            logging.error("Error in fetch_all with query %s and params %s: %s", query, params, e)
+            return []
+
 
     def insert_earthquake(self, earthquake):
         insert_query = '''
