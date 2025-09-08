@@ -8,7 +8,7 @@ router = APIRouter(
 
 @router.get("")
 async def get_latest_earthquakes(schema: str = "bronze", db: Database = Depends(get_db), limit: int = 3):
-    latest_earthquakes_query = f"SELECT * FROM {schema}.earthquakes limit {limit} order by timestamp desc"
+    latest_earthquakes_query = f"SELECT * FROM {schema}.earthquakes order by timestamp desc limit {limit}"
     results = db.fetch_all(latest_earthquakes_query)
     books_list = [
         {"id": row[0], "location": row[1], "magnitude": row[2], "depth": row[3], "timestamp": row[4]}
@@ -17,8 +17,8 @@ async def get_latest_earthquakes(schema: str = "bronze", db: Database = Depends(
     return books_list
 
 @router.get("/{earthquake_id}")
-async def get_earthquake_details(earthquake_id: int, schema: str = "bronze", db: Database = Depends(get_db)):
-    earthquake_query = f"SELECT * from {schema}.earthquake"
+async def get_earthquake_details(earthquake_id: str, schema: str = "bronze", db: Database = Depends(get_db)):
+    earthquake_query = f"SELECT * FROM {schema}.earthquakes WHERE id = %s"
     result = db.fetch_one(earthquake_query, (earthquake_id,))
     if result:
         earthquake = {

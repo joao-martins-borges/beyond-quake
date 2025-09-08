@@ -29,6 +29,24 @@ class Review(BaseModel):
     depth: float
     timestamp: str
 
+def init_database(db: db.Database): 
+    queries = [
+        '''
+        CREATE SCHEMA IF NOT EXISTS bronze;
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS bronze.earthquakes (
+            id TEXT PRIMARY KEY,
+            location VARCHAR(255) NOT NULL,
+            magnitude FLOAT NOT NULL,
+            depth FLOAT NOT NULL,
+            timestamp TIMESTAMPTZ NOT NULL
+        );
+        '''
+    ]
+    for query in queries:
+        db.execute(query=query,params="")
+
 async def fetch_and_ingest_loop():
     usgs = USGS(db=monitoring_db)
     while True:
@@ -52,30 +70,22 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-def initDatabase(db: db.Database): 
-    queries = [
-        '''
-        CREATE SCHEMA IF NOT EXISTS bronze;
-        ''',
-        '''
-        CREATE TABLE IF NOT EXISTS bronze.earthquakes (
-            id SERIAL PRIMARY KEY,
-            location VARCHAR(255) NOT NULL,
-            magnitude FLOAT NOT NULL,
-            depth FLOAT NOT NULL,
-            timestamp VARCHAR(255) NOT NULL
-        );
-        '''
-    ]
-    for query in queries:
-        db.execute(query=query,params="")
+async def fetch_and_ingest_loop():
+    usgs = USGS(db=monitoring_db, interval=120)
+    await usgs.run_polling()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(fetch_and_ingest_loop())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(earthquake_router, prefix="/earthquakes")
+app.include_router(earthquake_router, prefix="")
 
-initDatabase(db=monitoring_db)
-
-usgs = USGS(db=monitoring_db)
-data = usgs.fetch_data()
-earthquakes = usgs.parse_earthquakes(data)
-usgs.ingest_earthquakes(earthquakes)
+if __name__ == "__main__":
+    init_database(db=monitoring_db)
