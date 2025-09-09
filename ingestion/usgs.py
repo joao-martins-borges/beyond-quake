@@ -82,6 +82,7 @@ class USGS:
 
     # For demonstration and testing purposes
     def initial_load(self):
+        
         start_time = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
         end_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -102,7 +103,7 @@ class USGS:
         self.initial_load()
         while True:
             try:
-                start_time = self.last_timestamp - timedelta(seconds=self.buffer).strftime("%Y-%m-%dT%H:%M:%S")
+                start_time = (self.last_timestamp - timedelta(seconds=self.buffer)).strftime("%Y-%m-%dT%H:%M:%S")
                 end_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
                 data = self.fetch_data(start_time=start_time, end_time=end_time)
