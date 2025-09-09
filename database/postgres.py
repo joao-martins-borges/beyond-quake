@@ -18,16 +18,19 @@ class Database:
             port=port
         )
 
+    #execute query in database
     def execute(self, query, params=None):
         with self.conn.cursor() as cur:
             cur.execute(query, params)
             self.conn.commit()
             return cur
 
+    #close database cursor
     def close(self):
         if self.conn:
             self.conn.close()
-    
+
+    #retrieve records from database
     def fetch_one(self, query, params=None):
         try:
             with self.conn.cursor() as cur:
@@ -39,6 +42,7 @@ class Database:
             logging.error("Error in fetch_one with query %s and params %s: %s", query, params, e)
             return None
 
+    #retrieve records from database
     def fetch_all(self, query, params=None):
         try:
             with self.conn.cursor() as cur:
@@ -50,7 +54,7 @@ class Database:
             logging.error("Error in fetch_all with query %s and params %s: %s", query, params, e)
             return []
 
-
+    #Insert new records in the database and update record if it already exists
     def insert_earthquake(self, earthquake):
         insert_query = '''
         INSERT INTO bronze.earthquakes (id, location, magnitude, depth, timestamp, updated_utc)

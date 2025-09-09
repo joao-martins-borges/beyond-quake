@@ -11,6 +11,8 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+#API Data model - corresponds to the database
+#descriptions facilitte Fast API documentation
 class Earthquake(BaseModel):
 
     id: str = Field(..., description="USGS earthquake identifier")
@@ -33,7 +35,7 @@ class Earthquake(BaseModel):
         }
     }
 
-
+#Error data model for documentation
 class ErrorDetail(BaseModel):
     detail: str = Field(..., description="Error message")
 
@@ -43,12 +45,17 @@ class ErrorDetail(BaseModel):
         }
     }
 
-
+#endpoint definition to /earthquakes
 router = APIRouter(
     prefix="/earthquakes",
     tags=["earthquakes"],
 )
 
+#GET /earthquakes
+#GET /earthquakes?limit=10
+#GET /earthquakes=min_magnitude=3.0
+#Retrieve a list of earthquakes that can be, optionally, filtered 
+#by magnitude and change the default filter between 1 and 100 records
 @router.get(
     "",
     response_model=List[Earthquake],
@@ -84,28 +91,35 @@ async def get_latest_earthquakes(
     where_conditions = []
     query_params = []
     
+    #create where clause for minimum magnitude if it was defined
     if min_magnitude is not None:
         where_conditions.append("magnitude >= %s")
         query_params.append(min_magnitude)
     
+    #create where clause for maximum magnitude if it was defined
     if max_magnitude is not None:
         where_conditions.append("magnitude <= %s")
         query_params.append(max_magnitude)
     
+    #Concatenate WHERE clause
     where_clause = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
     latest_earthquakes_query = f"SELECT * FROM bronze.earthquakes{where_clause} ORDER BY timestamp DESC LIMIT %s"
     query_params.append(limit)
     
     logging.info("Fetching latest %s earthquakes from bronze schema with filters: min_mag=%s, max_mag=%s", 
                 limit, min_magnitude, max_magnitude)
+    #execute query 
     results = db.fetch_all(latest_earthquakes_query, query_params)
     earthquake_list = [
         {"id": row[0], "location": row[1], "magnitude": row[2], "depth": row[3], "timestamp": row[4], "updated_utc": row[5]}
         for row in results
     ]
     logging.info("Found %s earthquakes", len(earthquake_list))
+    #return query results with earthquake lists
     return earthquake_list
 
+#GET /earthquakes/{id}
+#Retrieve a specific record queried by ID
 @router.get(
     "/{earthquake_id}",
     response_model=Earthquake,
@@ -122,6 +136,7 @@ async def get_earthquake_details(
     db: Database = Depends(get_db),
 ):
     logging.info("Fetching details for earthquake_id=%s from bronze schema", earthquake_id)
+    #create and fetch the data for a specific ID in the database
     earthquake_query = "SELECT * FROM bronze.earthquakes WHERE id = %s"
     result = db.fetch_one(earthquake_query, (earthquake_id,))
     if result:

@@ -27,6 +27,7 @@ class Review(BaseModel):
     depth: float
     timestamp: str
 
+#create database objects if they don't exist
 def init_database(db: db.Database): 
     queries = [
         '''
@@ -46,10 +47,12 @@ def init_database(db: db.Database):
     for query in queries:
         db.execute(query=query,params=None)
 
+#start fetching data, periodically, through the USGS API
 async def fetch_and_ingest_loop():
     usgs = USGS(db=monitoring_db, interval=120)
     await usgs.run_polling()
 
+#asynchronously start by loading the initial data in the database and fetching the data periodically
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_database(db=monitoring_db)

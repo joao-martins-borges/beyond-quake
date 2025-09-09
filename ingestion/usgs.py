@@ -13,6 +13,7 @@ logging.basicConfig(
 class USGS:
     
     endpoint = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime={start}&endtime={end}"
+    buffer = 240 #seconds before the latest updated_utc in the database
 
     def __init__(self, interval: int = 120, db: db.Database = None):
         self.interval = interval
@@ -20,6 +21,7 @@ class USGS:
         self.last_timestamp = None
         logging.info("USGS poller initialized with interval=%s seconds", interval)
     
+    #Retrieve data from USGS API
     def fetch_data(self, start_time: str, end_time: str):
         url = self.endpoint.format(start=start_time, end=end_time)
         logging.info("Fetching data from %s to %s", start_time, end_time)
@@ -39,7 +41,7 @@ class USGS:
 
         return None
 
-    
+    #Parse JSON from USGS API
     def parse_earthquakes(self, data):
         earthquakes = []
         for eq in data.get("features", []):
@@ -70,6 +72,7 @@ class USGS:
         logging.info("Parsed %s earthquakes", len(earthquakes))
         return earthquakes
     
+    #Insert parsed data into the database
     def ingest_earthquakes(self, earthquakes):
         for earthquake in earthquakes:
             if not self.last_timestamp or earthquake["updated_utc"] > self.last_timestamp:
@@ -79,8 +82,8 @@ class USGS:
 
     # For demonstration and testing purposes
     def initial_load(self):
-        start_time = datetime(2025, 9, 1, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-        end_time = datetime(2025, 9, 6, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        start_time = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
+        end_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
         try:
             data = self.fetch_data(start_time=start_time, end_time=end_time)
@@ -94,15 +97,12 @@ class USGS:
         except Exception as e:
             logging.error("Error during initial load: %s", e)
 
+    #Retrieve data every 2 minutes - buffer os 4 minutes to ensure and backfilling or recent revision
     async def run_polling(self):
         self.initial_load()
         while True:
             try:
-                start_time = (
-                    (self.last_timestamp - timedelta(seconds=600)).strftime("%Y-%m-%dT%H:%M:%S")
-                    if self.last_timestamp
-                    else (datetime.now(timezone.utc) - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%S")
-                )
+                start_time = self.last_timestamp - timedelta(seconds=self.buffer).strftime("%Y-%m-%dT%H:%M:%S")
                 end_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
                 data = self.fetch_data(start_time=start_time, end_time=end_time)
