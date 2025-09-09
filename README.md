@@ -2,12 +2,12 @@
 
 ![Beyond Quake](beyond_quake.png)
 
-A real-time monitoring system for global natural disasters that ingests earthquake data from USGS, stores it efficiently in PostgreSQL, and exposes it via a RESTful API.
+A real-time monitoring system for global natural disasters that ingests earthquake data from USGS, stores it in PostgreSQL, and exposes it via a RESTful API.
 
 ## Setup
 
 ### Prerequisites
-- Docker and Docker Compose
+- Docker
 - Git
 
 ### Quick Start
