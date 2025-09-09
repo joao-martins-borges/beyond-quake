@@ -18,12 +18,22 @@ A real-time monitoring system for global natural disasters that ingests earthqua
    cd beyond-quake
    ```
 
-2. **Start the entire application**
+2. **Create environment configuration**
+   Create a `.env` file in the root directory:
+   ```env
+   POSTGRES_DB=beyond_quake
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=password
+   POSTGRES_HOST=database
+   POSTGRES_PORT=5432
+   ```
+
+3. **Start the entire application**
    ```bash
    docker-compose up -d
    ```
 
-3. **Access the API**
+4. **Access the API**
    - **Interactive API Docs**: http://localhost:8000/docs
    - **Alternative Docs**: http://localhost:8000/redoc
    - **OpenAPI JSON**: http://localhost:8000/openapi.json
@@ -75,6 +85,13 @@ curl "http://localhost:8000/earthquakes/us7000abcd"
 - **PostgreSQL**: Required - Included dependency injection in case, in the future, we need to change the Database being used.
 - **Medallion architecture concept**: We only have the 'bronze' schema currently, while we would also use the 'silver' schema with some data transformations and cleanup, and a 'gold' schema for data ready for downstream use (Machine Learning, Viz., etc.)
 - **Async Processing (minimal setup concerns)**: To minimize SETUP effort, a background task for ingestion is running. It loads the previous week's data (at the time we start the application) and appends new data as it is available in the USGS API (filtered by start time and end time)
+
+#### Modules
+- **database**: Includes database definitions and dependency injection
+- **ingestion**: USGS API calls are defined here and the incremental ingestion of new data
+- **routers**: Includes FastAPI routers/endpoints for the API server - in this canse only includes /earthquakes
+- **tests**: Includes unit/integrations tests. In this case, we only defined 1 test for demonstration purposes
+- **main.py**: Main function to startup the FastAPI se
 
 ### Data Model
 - **Table schema**: Included necessary fields, reutilized ID from USGS API, as well as included updated_utc field in order to keep track of changes being made to any existing earthquake record.
