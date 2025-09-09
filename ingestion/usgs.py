@@ -75,8 +75,7 @@ class USGS:
             if not self.last_timestamp or earthquake["updated_utc"] > self.last_timestamp:
                 self.db.insert_earthquake(earthquake)
                 logging.info("Inserted earthquake %s at %s", earthquake["id"], earthquake["time_utc"])
-                if not self.last_timestamp or earthquake["updated_utc"] > self.last_timestamp:
-                    self.last_timestamp = earthquake["updated_utc"]
+                self.last_timestamp = earthquake["updated_utc"]
 
     # For demonstration and testing purposes
     def initial_load(self):

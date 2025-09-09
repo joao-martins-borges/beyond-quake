@@ -1,4 +1,3 @@
-from sys import monitoring
 from fastapi import FastAPI
 from dotenv import load_dotenv
 import os
@@ -21,7 +20,6 @@ monitoring_db = db.Database(
     port=os.getenv("POSTGRES_PORT")
 )
 
-#PYDANTIC MODELS
 class Review(BaseModel):
     id: int
     location: str
@@ -63,7 +61,22 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title="Beyond Quake API",
+    description=(
+        "API for ingesting USGS earthquake data and querying recent events.\n\n"
+        "- Use /earthquakes to list latest events.\n"
+        "- Use /earthquakes/{earthquake_id} to get a single event."
+    ),
+    version="1.0.0",
+    openapi_tags=[
+        {
+            "name": "earthquakes",
+            "description": "Operations for listing and fetching earthquake events.",
+        }
+    ],
+)
 app.include_router(earthquake_router, prefix="")
 
 if __name__ == "__main__":
